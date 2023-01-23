@@ -16,6 +16,12 @@ vector<string> splitws(const string& str) {
 	return vs;
 }
 
+int vsfind(const vector<string>& vs, const string& s, size_t start=0) {
+	for (int i = start; i < vs.size(); i++)
+		if (vs[i] == s) return i;
+	return -1;
+}
+
 
 // vector<string> splittok(const string& line) {
 // 	vector<string> vs;
