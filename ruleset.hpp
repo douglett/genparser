@@ -14,13 +14,14 @@ struct Ruleset {
 		vector<string> subrules;
 	};
 	struct Hook {
-		virtual void parsehook(const string& rule, const string& token) const {
+		virtual void parsehook(const string& rule, const string& token) {
 			printf("hook action: %s :: [%s]\n", rule.c_str(), token.c_str());
 		}
 	};
 
 	map<string, Rule> rules;
 	Tokenizer tok;
+	vector<string> rulestate;
 	Hook* hook = nullptr;
 
 	void showrules() {
@@ -42,6 +43,10 @@ struct Ruleset {
 			addrule(rs[0], rs[1]);
 	}
 
+	string getstate() {
+		return rulestate.size() ? rulestate.back() : "";
+	}
+
 	// special parser for 'keywords' rule
 	int iskeyword(const string& str) {
 		if (rules.count("keywords"))
@@ -57,15 +62,19 @@ struct Ruleset {
 		return 1;
 	}
 
-	int getrule(const string& name) {
-		// printf("found rule: [%s]\n", name.c_str());
-		if (hook) hook->parsehook(name, "");
-		return 1;
+	void state_start(const string& name) {
+		if (name[0] != '_')
+			printf("start rule: [%s]\n", name.c_str()),
+			rulestate.push_back(name);
+	}
+	void state_end(const string& name) {
+		if (name[0] != '_')
+			printf("end rule: [%s]\n", name.c_str()),
+			rulestate.pop_back();
 	}
 
 	int runrule(const string& name) {
 		int pos = tok.pos;
-		string t;
 		// #define gettok()    ( tok.get(), printf("found token: [%s]\n", name.c_str()), 1 )
 		#define gettok()    ( gettoken(name) )
 		// #define getrule()   ( printf("found rule: [%s]\n", name.c_str()), 1 )
@@ -87,12 +96,14 @@ struct Ruleset {
 		// check rule existance
 		else if (!rules.count(name)) throw parse_error("missing rule: " + name);
 		// run rules in order
+		state_start(name);
 		const auto& sr = rules[name].subrules;
 		for (int i = 0, t; i < sr.size(); i++)
 			if      (sr[i] == "|") break;  // all rules between 'or' markers found
 			else if (runrule(sr[i])) ;  // rule found
 			else if ((t = vsfind(sr, "|", i)) > -1) unget(), i = t;  // search for next 'or' markers
-			else    return unget();  // rule not found
-		return getrule(name);
+			else    return rulestate.pop_back(), unget();  // rule not found
+		state_end(name);
+		return 1;
 	}
 };
