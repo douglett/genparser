@@ -43,3 +43,10 @@ int isident(const string& str) {
 		if (!isalpha(str[i]) && !isdigit(str[i]) && str[i] != '_') return 0;
 	return 1;
 }
+
+int isnumber(const string& str) {
+	if (str.length() == 0) return 0;
+	for (int i = 1; i < str.length(); i++)
+		if (!isdigit(str[i])) return 0;
+	return 1;
+}
