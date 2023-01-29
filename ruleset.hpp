@@ -93,6 +93,7 @@ struct Ruleset {
 		else if (name == "endl")     return tok.peek() == tok.TOK_EOL || tok.peek() == tok.TOK_EOF ? gettok() : 0;
 		else if (name == "ident")    return isident(tok.peek()) && !iskeyword(tok.peek()) ? gettok() : 0;
 		else if (name == "number")   return isnumber(tok.peek()) ? gettok() : 0;
+		else if (name == "strlit")   return isstrlit(tok.peek()) ? gettok() : 0;
 		// check rule existance
 		else if (!rules.count(name)) throw parse_error("missing rule: " + name);
 		// run rules in order

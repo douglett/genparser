@@ -35,6 +35,9 @@ int vsfind(const vector<string>& vs, const string& s, size_t start=0) {
 // 	return vs;
 // }
 
+int isstrlit(const string& str) {
+	return str.length() >= 2 && str.front() == '"' && str.back() == '"';
+}
 
 int isident(const string& str) {
 	if (str.length() == 0) return 0;
@@ -49,4 +52,8 @@ int isnumber(const string& str) {
 	for (int i = 1; i < str.length(); i++)
 		if (!isdigit(str[i])) return 0;
 	return 1;
+}
+
+string stripstrlit(const string& str) {
+	return isstrlit(str) ? str.substr(1, str.length()-2) : str;
 }
