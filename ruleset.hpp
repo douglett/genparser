@@ -14,8 +14,14 @@ struct Ruleset {
 		vector<string> subrules;
 	};
 	struct Hook {
-		virtual void parsehook(const string& rule, const string& token) {
+		virtual void hooktoken(const string& rule, const string& token) {
 			printf("hook action: %s :: [%s]\n", rule.c_str(), token.c_str());
+		}
+		virtual void hookrulestart(const string& rule) {
+			printf("start rule: [%s]\n", rule.c_str());
+		}
+		virtual void hookruleend(const string& rule) {
+			printf("end rule: [%s]\n", rule.c_str());
 		}
 	};
 
@@ -43,8 +49,11 @@ struct Ruleset {
 			addrule(rs[0], rs[1]);
 	}
 
-	string getstate() {
+	string state() {
 		return rulestate.size() ? rulestate.back() : "";
+	}
+	string laststate() {
+		return rulestate.size() >= 2 ? rulestate[rulestate.size()-2] : "";
 	}
 
 	// special parser for 'keywords' rule
@@ -55,28 +64,23 @@ struct Ruleset {
 		return 0;
 	}
 
-	int gettoken(const string& name) {
-		auto token = tok.get();
-		// printf("found token: '%s' [%s]\n", name.c_str(), token.c_str());
-		if (hook) hook->parsehook(name, token);
-		return 1;
+
+	// child class hooks
+	virtual void gettoken(const string& rule, const string& token) {
+		printf("get token: '%s' [%s]\n", rule.c_str(), token.c_str());
+	}
+	virtual void state_start() {
+		printf("start rule: [%s]\n", state().c_str());
+	}
+	virtual void state_end() {
+		printf("end rule: [%s]\n", state().c_str());
 	}
 
-	void state_start(const string& name) {
-		if (name[0] != '_')
-			printf("start rule: [%s]\n", name.c_str()),
-			rulestate.push_back(name);
-	}
-	void state_end(const string& name) {
-		if (name[0] != '_')
-			printf("end rule: [%s]\n", name.c_str()),
-			rulestate.pop_back();
-	}
 
 	int runrule(const string& name) {
 		int pos = tok.pos;
 		// #define gettok()    ( tok.get(), printf("found token: [%s]\n", name.c_str()), 1 )
-		#define gettok()    ( gettoken(name) )
+		#define gettok()    ( gettoken(name, tok.get()), 1 )
 		// #define getrule()   ( printf("found rule: [%s]\n", name.c_str()), 1 )
 		#define unget()     ( tok.pos = pos, 0 )
 		#define reqerror()  ( throw parse_error(string("rule required: ") + name + ", got [" + tok.peek() + "]"), 0 )
@@ -96,15 +100,19 @@ struct Ruleset {
 		else if (name == "strlit")   return isstrlit(tok.peek()) ? gettok() : 0;
 		// check rule existance
 		else if (!rules.count(name)) throw parse_error("missing rule: " + name);
+		// start rule
+		rulestate.push_back(name);
+		if (name[0] != '_') state_start();
 		// run rules in order
-		state_start(name);
 		const auto& sr = rules[name].subrules;
 		for (int i = 0, t; i < sr.size(); i++)
 			if      (sr[i] == "|") break;  // all rules between 'or' markers found
 			else if (runrule(sr[i])) ;  // rule found
 			else if ((t = vsfind(sr, "|", i)) > -1) unget(), i = t;  // search for next 'or' markers
 			else    return rulestate.pop_back(), unget();  // rule not found
-		state_end(name);
-		return 1;
+		// end rule
+		if (name[0] != '_') state_end();
+		rulestate.pop_back();
+		return 1;  // ok
 	}
 };
