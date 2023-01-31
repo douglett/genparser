@@ -13,22 +13,10 @@ struct Ruleset {
 		string name;
 		vector<string> subrules;
 	};
-	struct Hook {
-		virtual void hooktoken(const string& rule, const string& token) {
-			printf("hook action: %s :: [%s]\n", rule.c_str(), token.c_str());
-		}
-		virtual void hookrulestart(const string& rule) {
-			printf("start rule: [%s]\n", rule.c_str());
-		}
-		virtual void hookruleend(const string& rule) {
-			printf("end rule: [%s]\n", rule.c_str());
-		}
-	};
 
 	map<string, Rule> rules;
 	Tokenizer tok;
 	vector<string> rulestate;
-	Hook* hook = nullptr;
 
 	void showrules() {
 		for (const auto& r : rules) {
@@ -76,21 +64,24 @@ struct Ruleset {
 		printf("end rule: [%s]\n", state().c_str());
 	}
 
+	void gettoken2(const string& rule, const string& token, Node& n) {
+		n.list.push_back({ rule + "::" + token });
+		gettoken(rule, token);
+	}
 
-	int runrule(const string& name) {
+
+	int runrule(const string& name, Node& n) {
 		int pos = tok.pos;
-		// #define gettok()    ( tok.get(), printf("found token: [%s]\n", name.c_str()), 1 )
-		#define gettok()    ( gettoken(name, tok.get()), 1 )
-		// #define getrule()   ( printf("found rule: [%s]\n", name.c_str()), 1 )
+		#define gettok()    ( gettoken2(name, tok.get(), n), 1 )
 		#define unget()     ( tok.pos = pos, 0 )
 		#define reqerror()  ( throw parse_error(string("rule required: ") + name + ", got [" + tok.peek() + "]"), 0 )
 		// built in rules
 		if      (name.length() < 2)  throw parse_error(string("bad rule [") + name + "]");
 		// rule modifiers
 		else if (name[0] == '$')     return tok.peek() == name.substr(1) ? gettok() : 0;  // string literal
-		else if (name[0] == '!')     return runrule(name.substr(1)) ? 1 : reqerror();  // run rule or error
-		else if (name[0] == '?')     return runrule(name.substr(1)), 1;  // rule optional
-		else if (name[0] == '*')     { while (runrule(name.substr(1))) ; return 1; }
+		else if (name[0] == '!')     return runrule(name.substr(1), n) ? 1 : reqerror();  // run rule or error
+		else if (name[0] == '?')     return runrule(name.substr(1), n), 1;  // rule optional
+		else if (name[0] == '*')     { while (runrule(name.substr(1), n)) ; return 1; }
 		// literal rules
 		else if (name == "eol")      return tok.peek() == tok.TOK_EOL ? gettok() : 0;
 		else if (name == "eof")      return tok.peek() == tok.TOK_EOF ? 1 : 0;
@@ -102,14 +93,15 @@ struct Ruleset {
 		else if (!rules.count(name)) throw parse_error("missing rule: " + name);
 		// start rule
 		rulestate.push_back(name);
+		n.list.push_back({ name });
 		if (name[0] != '_') state_start();
 		// run rules in order
 		const auto& sr = rules[name].subrules;
 		for (int i = 0, t; i < sr.size(); i++)
 			if      (sr[i] == "|") break;  // all rules between 'or' markers found
-			else if (runrule(sr[i])) ;  // rule found
-			else if ((t = vsfind(sr, "|", i)) > -1) unget(), i = t;  // search for next 'or' markers
-			else    return rulestate.pop_back(), unget();  // rule not found
+			else if (runrule(sr[i], n.list.back())) ;  // rule found
+			else if ((t = vsfind(sr, "|", i)) > -1) n.list.back().list = {}, unget(), i = t;  // search for next 'or' markers
+			else    return rulestate.pop_back(), n.list.pop_back(), unget();  // rule not found
 		// end rule
 		if (name[0] != '_') state_end();
 		rulestate.pop_back();

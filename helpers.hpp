@@ -8,6 +8,18 @@ using namespace std;
 struct parse_error : runtime_error { using runtime_error::runtime_error; };
 
 
+struct Node {
+	string val;
+	vector<Node> list;
+
+	void show(int ind = 0) const {
+		printf("%s%s\n", string(ind*2, ' ').c_str(), val.c_str());
+		for (auto& n : list)
+			n.show(ind+1);
+	}
+};
+
+
 vector<string> splitws(const string& str) {
 	stringstream ss(str);
 	string s;
@@ -16,24 +28,18 @@ vector<string> splitws(const string& str) {
 	return vs;
 }
 
+string vsjoin(const vector<string>& vs, const string& glue=" ") {
+	string s;
+	for (int i = 0; i < vs.size(); i++)
+		s += (i == 0 ? "" : glue) + vs[i];
+	return s;
+}
+
 int vsfind(const vector<string>& vs, const string& s, size_t start=0) {
 	for (int i = start; i < vs.size(); i++)
 		if (vs[i] == s) return i;
 	return -1;
 }
-
-
-// vector<string> splittok(const string& line) {
-// 	vector<string> vs;
-// 	string s;
-// 	#define addtok() (s.length() ? vs.push_back(s), s = "" : s)
-// 	for (int i = 0; i < line.length(); i++)
-// 		if      (isspace(line[i])) addtok();
-// 		else if (isalnum(line[i])) s += line[i];
-// 		else    addtok(), s += line[i], addtok();
-// 	addtok();
-// 	return vs;
-// }
 
 int isstrlit(const string& str) {
 	return str.length() >= 2 && str.front() == '"' && str.back() == '"';

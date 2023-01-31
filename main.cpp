@@ -22,11 +22,11 @@ struct Lang2 : Ruleset {
 	}
 
 
-	virtual void gettoken(const string& rule, const string& token) {
-		// Ruleset::gettoken(token);
-		if      (state() == "assign" && rule == "ident")  lines.push_back("assign :: " + token + " = ");
-		else if (state() == "expr" && laststate() == "assign") lines.back() += token;
-	}
+	// virtual void gettoken(const string& rule, const string& token) {
+	// 	// Ruleset::gettoken(token);
+	// 	if      (state() == "assign" && rule == "ident")  lines.push_back("assign :: " + token + " = ");
+	// 	else if (state() == "expr" && laststate() == "assign") lines.back() += token;
+	// }
 	// virtual void state_start() {
 	// 	Ruleset::state_start();
 	// }
@@ -42,10 +42,12 @@ void lang2_test() {
 		"a = 102\n"
 		"b = \"ass\"\n"
 	);
-	l2.runrule("prog");
+	Node n = { "parse_result" };
+	l2.runrule("prog", n);
+	n.show();
 
-	for (const auto& l : l2.lines)
-		printf(" %s\n", l.c_str());
+	// for (const auto& l : l2.lines)
+	// 	printf(" %s\n", l.c_str());
 }
 
 
