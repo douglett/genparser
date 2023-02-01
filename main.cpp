@@ -41,13 +41,10 @@ void lang2_test() {
 	l2.tok.loads(
 		"a = 102\n"
 		"b = \"ass\"\n"
+		"fart"
 	);
-	Node n = { "parse_result" };
-	l2.runrule("prog", n);
-	n.show();
-
-	// for (const auto& l : l2.lines)
-	// 	printf(" %s\n", l.c_str());
+	l2.runall();
+	l2.parse_result.show();
 }
 
 

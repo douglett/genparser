@@ -8,18 +8,6 @@ using namespace std;
 struct parse_error : runtime_error { using runtime_error::runtime_error; };
 
 
-struct Node {
-	string val;
-	vector<Node> list;
-
-	void show(int ind = 0) const {
-		printf("%s%s\n", string(ind*2, ' ').c_str(), val.c_str());
-		for (auto& n : list)
-			n.show(ind+1);
-	}
-};
-
-
 vector<string> splitws(const string& str) {
 	stringstream ss(str);
 	string s;

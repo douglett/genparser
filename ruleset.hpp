@@ -9,14 +9,32 @@ using namespace std;
 
 
 struct Ruleset {
+	// rule
 	struct Rule {
 		string name;
 		vector<string> subrules;
+	};
+	// rule result node
+	struct Node {
+		string rule, val;
+		vector<Node> list;
+
+		void show(int ind = 0) const {
+			printf("%s%s%s%s\n", string(ind*2, ' ').c_str(), rule.c_str(), (val.length() ? " :: " : ""), val.c_str());
+			for (auto& n : list)
+				n.show(ind+1);
+		}
+		Node* firstofrule(const string& rule) {
+			for (auto& n : list)
+				if (n.rule == rule) return &n;
+			return nullptr;
+		}
 	};
 
 	map<string, Rule> rules;
 	Tokenizer tok;
 	vector<string> rulestate;
+	Node parse_result;
 
 	void showrules() {
 		for (const auto& r : rules) {
@@ -64,22 +82,28 @@ struct Ruleset {
 		printf("end rule: [%s]\n", state().c_str());
 	}
 
-	void gettoken2(const string& rule, const string& token, Node& n) {
-		n.list.push_back({ rule + "::" + token });
-		gettoken(rule, token);
+	// void gettoken2(const string& rule, const string& token, Node& n) {
+	// 	n.list.push_back({ rule, token });
+	// 	gettoken(rule, token);
+	// }
+
+	int error(const string& name, Node& n) {
+		string error = "rule required: " + name + ", got [" + tok.peek() + "]";
+		n.list.push_back({ "ERROR: " + error });
+		throw parse_error(error);
 	}
 
 
 	int runrule(const string& name, Node& n) {
 		int pos = tok.pos;
-		#define gettok()    ( gettoken2(name, tok.get(), n), 1 )
+		#define gettok()    ( n.list.push_back({ name, tok.peek() }), gettoken(name, tok.get()), 1 )
 		#define unget()     ( tok.pos = pos, 0 )
-		#define reqerror()  ( throw parse_error(string("rule required: ") + name + ", got [" + tok.peek() + "]"), 0 )
+		// #define reqerror()  ( throw parse_error(string("rule required: ") + name + ", got [" + tok.peek() + "]"), 0 )
 		// built in rules
 		if      (name.length() < 2)  throw parse_error(string("bad rule [") + name + "]");
 		// rule modifiers
 		else if (name[0] == '$')     return tok.peek() == name.substr(1) ? gettok() : 0;  // string literal
-		else if (name[0] == '!')     return runrule(name.substr(1), n) ? 1 : reqerror();  // run rule or error
+		else if (name[0] == '!')     return runrule(name.substr(1), n) ? 1 : error(name, n);  // run rule or error
 		else if (name[0] == '?')     return runrule(name.substr(1), n), 1;  // rule optional
 		else if (name[0] == '*')     { while (runrule(name.substr(1), n)) ; return 1; }
 		// literal rules
@@ -106,5 +130,10 @@ struct Ruleset {
 		if (name[0] != '_') state_end();
 		rulestate.pop_back();
 		return 1;  // ok
+	}
+
+	int runall() {
+		parse_result = { "parse_result" };
+		return runrule("prog", parse_result);
 	}
 };
