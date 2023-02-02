@@ -16,26 +16,51 @@ struct Ruleset {
 	};
 	// rule result node
 	struct Node {
-		string rule, val;
+		string rule, value;
 		vector<Node> list;
 
 		void show(int ind = 0) const {
-			printf("%s%s%s%s\n", string(ind*2, ' ').c_str(), rule.c_str(), (val.length() ? " :: " : ""), val.c_str());
+			printf("%s%s%s%s\n", string(ind*2, ' ').c_str(), rule.c_str(), (value.length() ? " :: " : ""), value.c_str());
 			for (auto& n : list)
 				n.show(ind+1);
 		}
-		Node* firstofrule(const string& rule) {
+		int count(const string& rule) const {
+			int count = 0;
 			for (auto& n : list)
-				if (n.rule == rule) return &n;
-			return nullptr;
+				if (n.rule == rule) count++;
+			return count;
 		}
+		const Node& get(const string& rule, int at=0) const {
+			int count = 0;
+			for (auto& n : list)
+				if (n.rule == rule) {
+					if (at == count) return n;
+					count++;
+				}
+			throw runtime_error("missing rule " + rule + " at position " + to_string(at));
+		}
+		// Node& get(const string& rule, int at=0) {
+		// 	return (Node&)((const Node*)this)->get(rule, 0);
+		// }
 	};
 
+	// state
 	map<string, Rule> rules;
 	Tokenizer tok;
 	vector<string> rulestate;
 	Node parse_result;
 
+
+	// adding rules
+	void addrule(const string& name, const string& subrules) {
+		if (rules.count(name) == 1) throw parse_error("duplicate rule definition: " + name);
+		rules[name] = { name, splitws(subrules) };
+		if (rules[name].subrules.size() == 0) throw parse_error("no subrules in rule: " + name);
+	}
+	void addrules(const vector<array<string, 2>>& rulelist) {
+		for (auto& rs : rulelist)
+			addrule(rs[0], rs[1]);
+	}
 	void showrules() {
 		for (const auto& r : rules) {
 			printf("%s\n", r.second.name.c_str());
@@ -44,24 +69,14 @@ struct Ruleset {
 		}
 	}
 
-	void addrule(const string& name, const string& subrules) {
-		if (rules.count(name) == 1) throw parse_error("duplicate rule definition: " + name);
-		rules[name] = { name, splitws(subrules) };
-		if (rules[name].subrules.size() == 0) throw parse_error("no subrules in rule: " + name);
-	}
 
-	void addrules(const vector<array<string, 2>>& rulelist) {
-		for (auto& rs : rulelist)
-			addrule(rs[0], rs[1]);
-	}
-
+	// accessors
 	string state() {
 		return rulestate.size() ? rulestate.back() : "";
 	}
 	string laststate() {
 		return rulestate.size() >= 2 ? rulestate[rulestate.size()-2] : "";
 	}
-
 	// special parser for 'keywords' rule
 	int iskeyword(const string& str) {
 		if (rules.count("keywords"))
@@ -82,11 +97,12 @@ struct Ruleset {
 		printf("end rule: [%s]\n", state().c_str());
 	}
 
-	// void gettoken2(const string& rule, const string& token, Node& n) {
-	// 	n.list.push_back({ rule, token });
-	// 	gettoken(rule, token);
-	// }
 
+	// parsing
+	int parse() {
+		parse_result = { "parse_result" };
+		return runrule("prog", parse_result);
+	}
 	int error(const string& name, Node& n) {
 		string error = "rule required: " + name + ", got [" + tok.peek() + "]";
 		n.list.push_back({ "ERROR: " + error });
@@ -98,7 +114,6 @@ struct Ruleset {
 		int pos = tok.pos;
 		#define gettok()    ( n.list.push_back({ name, tok.peek() }), gettoken(name, tok.get()), 1 )
 		#define unget()     ( tok.pos = pos, 0 )
-		// #define reqerror()  ( throw parse_error(string("rule required: ") + name + ", got [" + tok.peek() + "]"), 0 )
 		// built in rules
 		if      (name.length() < 2)  throw parse_error(string("bad rule [") + name + "]");
 		// rule modifiers
@@ -118,7 +133,8 @@ struct Ruleset {
 		// start rule
 		rulestate.push_back(name);
 		n.list.push_back({ name });
-		if (name[0] != '_') state_start();
+		// if (name[0] != '_') state_start();
+		state_start();
 		// run rules in order
 		const auto& sr = rules[name].subrules;
 		for (int i = 0, t; i < sr.size(); i++)
@@ -127,13 +143,9 @@ struct Ruleset {
 			else if ((t = vsfind(sr, "|", i)) > -1) n.list.back().list = {}, unget(), i = t;  // search for next 'or' markers
 			else    return rulestate.pop_back(), n.list.pop_back(), unget();  // rule not found
 		// end rule
-		if (name[0] != '_') state_end();
+		// if (name[0] != '_') state_end();
+		state_end();
 		rulestate.pop_back();
 		return 1;  // ok
-	}
-
-	int runall() {
-		parse_result = { "parse_result" };
-		return runrule("prog", parse_result);
 	}
 };

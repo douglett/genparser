@@ -43,7 +43,7 @@ int isident(const string& str) {
 
 int isnumber(const string& str) {
 	if (str.length() == 0) return 0;
-	for (int i = 1; i < str.length(); i++)
+	for (int i = 0; i < str.length(); i++)
 		if (!isdigit(str[i])) return 0;
 	return 1;
 }
