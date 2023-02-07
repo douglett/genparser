@@ -29,10 +29,14 @@ struct Lang2 : Ruleset {
 		addrules({
 			{ "prog", "*statement !eof" },
 			{ "emptyline", "eol" },
-			{ "keywords", "dim function if while for end print" },
+			{ "keywords", "print end if else" },
 			// statements
-			{ "statement", "assign | print | emptyline" },
+			{ "statement", "assign | print | if | emptyline" },
 			{ "print", "$print *expr !endl" },
+			{ "if", "$if !expr !$then !endl !block ?else !$end !$if !endl" },
+			// { "elseif", "$else $if !expr !endl !block"},
+			{ "else", "$else !endl !block"},
+			{ "block", "*statement" },
 			// variables
 			{ "assign", "varpath !$= !expr !eol" },
 			{ "varpath", "ident" },
@@ -44,13 +48,20 @@ struct Lang2 : Ruleset {
 	map<string, Var> vars;
 
 	void run() {
-		for (const auto& n : parse_result.get("prog").list)
-			if (n.rule == "statement") run_statement(n);
+		// for (const auto& n : parse_result.get("prog").list)
+		// 	if (n.rule == "statement") run_statement(n);
+		run_block(parse_result.get("prog"));
+	}
+
+	void run_block(const Node& block) {
+		for (auto& n : block.list)
+			run_statement(n);
 	}
 
 	void run_statement(const Node& stmt) {
 		for (auto& n : stmt.list)
-			if (n.rule == "print") {
+			if (n.rule == "emptyline") ;
+			else if (n.rule == "print") {
 				printf("> ");
 				for (auto& nn : n.list)
 					if (nn.rule == "expr")
@@ -63,8 +74,23 @@ struct Lang2 : Ruleset {
 				printf("%s = %s\n", id.c_str(), ex.to_string().c_str());
 				vars[id] = ex;
 			}
+			else if (n.rule == "if") {
+				if (run_expr_truthy(n.get("expr")))
+					run_block(n.get("block"));
+				else if (n.count("else"))
+					run_block(n.get("else").get("block"));
+			}
 			else
 				throw runtime_error("bad_statement [" + n.rule + "]");
+	}
+
+	int run_expr_truthy(const Node& n) {
+		auto v = run_expr(n);
+		switch (v.type) {
+		case Var::T_NULL:    return false;
+		case Var::T_NUMBER:  return !!v.i;
+		default:             throw runtime_error("value not truthy [" + v.to_string() + "]");
+		}
 	}
 
 	Var run_expr(const Node& n) {
@@ -77,17 +103,19 @@ struct Lang2 : Ruleset {
 		else if (v.rule == "varpath")  return vars.count(v.get("ident").value) ? vars[v.get("ident").value] : Var{ Var::T_NULL };
 		throw runtime_error("bad_expression [" + v.rule + "]");
 	}
+
 };
 
 
 void lang2_test() {
 	Lang2 l2;
-	l2.tok.loads(
-		"a = 102\n"
-		"b = \"ass\"\n"
-		"print \"hello world\" 10 null true\n"
-		"print a b\n"
-	);
+	// l2.tok.loads(
+	// 	"a = 102\n"
+	// 	"b = \"ass\"\n"
+	// 	"print \"hello world\" 10 null true\n"
+	// 	"print a b\n"
+	// );
+	l2.tok.loadf("test.bas");
 	l2.parse();
 	l2.parse_result.show();
 

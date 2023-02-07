@@ -37,7 +37,7 @@ struct Ruleset {
 					if (at == count) return n;
 					count++;
 				}
-			throw runtime_error("missing rule " + rule + " at position " + to_string(at));
+			throw runtime_error("missing rule [" + rule + "] at position " + to_string(at));
 		}
 		// Node& get(const string& rule, int at=0) {
 		// 	return (Node&)((const Node*)this)->get(rule, 0);
@@ -53,9 +53,9 @@ struct Ruleset {
 
 	// adding rules
 	void addrule(const string& name, const string& subrules) {
-		if (rules.count(name) == 1) throw parse_error("duplicate rule definition: " + name);
+		if (rules.count(name) == 1) throw parse_error("duplicate rule definition [" + name + "]");
 		rules[name] = { name, splitws(subrules) };
-		if (rules[name].subrules.size() == 0) throw parse_error("no subrules in rule: " + name);
+		if (rules[name].subrules.size() == 0) throw parse_error("no subrules in rule [" + name + "]");
 	}
 	void addrules(const vector<array<string, 2>>& rulelist) {
 		for (auto& rs : rulelist)
