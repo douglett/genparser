@@ -30,18 +30,25 @@ struct Ruleset {
 				if (n.rule == rule) count++;
 			return count;
 		}
-		const Node& get(const string& rule, int at=0) const {
+		int getpos(const string& rule, int at=0) const {
 			int count = 0;
-			for (auto& n : list)
-				if (n.rule == rule) {
-					if (at == count) return n;
+			for (int i = 0; i < list.size(); i++)
+				if (list[i].rule == rule) {
+					if (at == count) return i;
 					count++;
 				}
+			return -1;
+		}
+		const Node& get(const string& rule, int at=0) const {
+			int p = getpos(rule, at);
+			if (p > -1) return list[p];
 			throw runtime_error("missing rule [" + rule + "] at position " + to_string(at));
 		}
-		// Node& get(const string& rule, int at=0) {
-		// 	return (Node&)((const Node*)this)->get(rule, 0);
-		// }
+		Node& get(const string& rule, int at=0) {
+			int p = getpos(rule, at);
+			if (p > -1) return list[p];
+			throw runtime_error("missing rule [" + rule + "] at position " + to_string(at));
+		}
 	};
 
 	// state
