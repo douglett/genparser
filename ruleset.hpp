@@ -48,11 +48,8 @@ struct Node {
 
 // main Ruleset class
 struct Ruleset {
-	// rule
-	struct Rule {
-		string name;
-		vector<string> subrules;
-	};
+	// rule subclass
+	struct Rule { string name; vector<string> subrules; };
 	// state
 	const int debug = false;
 	map<string, Rule> rules;

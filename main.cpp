@@ -4,6 +4,7 @@ using namespace std;
 #include "ruleset.hpp"
 
 
+// variable type (variadic)
 struct Var {
 	enum TYPE { T_NULL=0, T_NUMBER, T_STRING };
 	TYPE type = T_NULL;
@@ -23,8 +24,10 @@ const Var VAR_TRUE  = { Var::T_NUMBER, 1 };
 const Var VAR_FALSE = { Var::T_NUMBER, 0 };
 
 
+// main language
 struct Lang2 {
 	Ruleset rules;
+	map<string, Var> vars;
 
 	Lang2() {
 		rules.addrules({
@@ -54,12 +57,7 @@ struct Lang2 {
 		});
 	}
 
-
-	map<string, Var> vars;
-
 	void run() {
-		// for (const auto& n : parse_result.get("prog").list)
-		// 	if (n.rule == "statement") run_statement(n);
 		run_block(rules.parse_result.get("prog"));
 	}
 

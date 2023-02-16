@@ -34,8 +34,6 @@ struct Tokenizer {
 		return 0;
 	}
 	
-	// void addtok(vector<string>& vs, string& s) { if (s.length()) vs.push_back(s), s = ""; }
-	// void addchr(vector<string>& vs, char c   ) { vs.push_back(string(1, c)); }
 	string getlit(const string& line, int& i) {
 		string s = "\"";
 		for (++i ; i < line.length(); i++) {
