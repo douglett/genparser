@@ -28,7 +28,8 @@ struct Lang2 : Ruleset {
 	Lang2() {
 		addrules({
 			{ "prog", "*statement !eof" },
-			{ "emptyline", "eol" },
+			{ "emptyline", "?comment eol" },
+			{ "endl", "?comment eol | ?comment eof" },
 			{ "keywords", "print end if else" },
 			// statements
 			{ "statement", "assign | print | if | emptyline" },

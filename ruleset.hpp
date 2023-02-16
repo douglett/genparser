@@ -131,10 +131,11 @@ struct Ruleset {
 		// literal rules
 		else if (name == "eol")      return tok.peek() == tok.TOK_EOL ? gettok() : 0;
 		else if (name == "eof")      return tok.peek() == tok.TOK_EOF ? 1 : 0;
-		else if (name == "endl")     return tok.peek() == tok.TOK_EOL || tok.peek() == tok.TOK_EOF ? gettok() : 0;
+		// else if (name == "endl")     return tok.peek() == tok.TOK_EOL || tok.peek() == tok.TOK_EOF ? gettok() : 0;
 		else if (name == "ident")    return isident(tok.peek()) && !iskeyword(tok.peek()) ? gettok() : 0;
 		else if (name == "number")   return isnumber(tok.peek()) ? gettok() : 0;
 		else if (name == "strlit")   return isstrlit(tok.peek()) ? gettok() : 0;
+		else if (name == "comment")  return iscomment(tok.peek()) ? gettok() : 0;
 		// check rule existance
 		else if (!rules.count(name)) throw parse_error("missing rule: " + name);
 		// start rule

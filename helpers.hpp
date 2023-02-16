@@ -33,6 +33,10 @@ int isstrlit(const string& str) {
 	return str.length() >= 2 && str.front() == '"' && str.back() == '"';
 }
 
+int iscomment(const string& str) {
+	return str.length() >= 2 && str[0] == '/' && str[1] == '/';
+}
+
 int isident(const string& str) {
 	if (str.length() == 0) return 0;
 	if (!isalpha(str[0]) && str[0] != '_') return 0;
