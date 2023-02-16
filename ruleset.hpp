@@ -8,50 +8,53 @@
 using namespace std;
 
 
+// rule result node
+struct Node {
+	string rule, value;
+	vector<Node> list;
+
+	void show(int ind = 0) const {
+		printf("%s%s%s%s\n", string(ind*2, ' ').c_str(), rule.c_str(), (value.length() ? " :: " : ""), value.c_str());
+		for (auto& n : list)
+			n.show(ind+1);
+	}
+	int count(const string& rule) const {
+		int count = 0;
+		for (auto& n : list)
+			if (n.rule == rule) count++;
+		return count;
+	}
+	int getpos(const string& rule, int at=0) const {
+		int count = 0;
+		for (int i = 0; i < list.size(); i++)
+			if (list[i].rule == rule) {
+				if (at == count) return i;
+				count++;
+			}
+		return -1;
+	}
+	const Node& get(const string& rule, int at=0) const {
+		int p = getpos(rule, at);
+		if (p > -1) return list[p];
+		throw runtime_error("missing rule [" + rule + "] at position " + to_string(at));
+	}
+	Node& get(const string& rule, int at=0) {
+		int p = getpos(rule, at);
+		if (p > -1) return list[p];
+		throw runtime_error("missing rule [" + rule + "] at position " + to_string(at));
+	}
+};
+
+
+// main Ruleset class
 struct Ruleset {
 	// rule
 	struct Rule {
 		string name;
 		vector<string> subrules;
 	};
-	// rule result node
-	struct Node {
-		string rule, value;
-		vector<Node> list;
-
-		void show(int ind = 0) const {
-			printf("%s%s%s%s\n", string(ind*2, ' ').c_str(), rule.c_str(), (value.length() ? " :: " : ""), value.c_str());
-			for (auto& n : list)
-				n.show(ind+1);
-		}
-		int count(const string& rule) const {
-			int count = 0;
-			for (auto& n : list)
-				if (n.rule == rule) count++;
-			return count;
-		}
-		int getpos(const string& rule, int at=0) const {
-			int count = 0;
-			for (int i = 0; i < list.size(); i++)
-				if (list[i].rule == rule) {
-					if (at == count) return i;
-					count++;
-				}
-			return -1;
-		}
-		const Node& get(const string& rule, int at=0) const {
-			int p = getpos(rule, at);
-			if (p > -1) return list[p];
-			throw runtime_error("missing rule [" + rule + "] at position " + to_string(at));
-		}
-		Node& get(const string& rule, int at=0) {
-			int p = getpos(rule, at);
-			if (p > -1) return list[p];
-			throw runtime_error("missing rule [" + rule + "] at position " + to_string(at));
-		}
-	};
-
 	// state
+	const int debug = false;
 	map<string, Rule> rules;
 	Tokenizer tok;
 	vector<string> rulestate;
@@ -95,13 +98,13 @@ struct Ruleset {
 
 	// child class hooks
 	virtual void gettoken(const string& rule, const string& token) {
-		printf("get token: '%s' [%s]\n", rule.c_str(), token.c_str());
+		if (debug) printf("get token: '%s' [%s]\n", rule.c_str(), token.c_str());
 	}
 	virtual void state_start() {
-		printf("start rule: [%s]\n", state().c_str());
+		if (debug) printf("start rule: [%s]\n", state().c_str());
 	}
 	virtual void state_end() {
-		printf("end rule: [%s]\n", state().c_str());
+		if (debug) printf("end rule: [%s]\n", state().c_str());
 	}
 
 

@@ -2,7 +2,6 @@
 using namespace std;
 #include "tokenizer.hpp"
 #include "ruleset.hpp"
-// #include "lang1.hpp"
 
 
 struct Var {
@@ -22,11 +21,11 @@ struct Var {
 };
 
 
-struct Lang2 : Ruleset {
-	// vector<string> lines;
+struct Lang2 {
+	Ruleset rules;
 
 	Lang2() {
-		addrules({
+		rules.addrules({
 			{ "prog", "*statement !eof" },
 			{ "emptyline", "?comment eol" },
 			{ "endl", "?comment eol | ?comment eof" },
@@ -51,7 +50,7 @@ struct Lang2 : Ruleset {
 	void run() {
 		// for (const auto& n : parse_result.get("prog").list)
 		// 	if (n.rule == "statement") run_statement(n);
-		run_block(parse_result.get("prog"));
+		run_block(rules.parse_result.get("prog"));
 	}
 
 	void run_block(const Node& block) {
@@ -72,7 +71,7 @@ struct Lang2 : Ruleset {
 			else if (n.rule == "assign") {
 				auto& id = n.get("varpath").get("ident").value;
 				auto  ex = run_expr(n.get("expr"));
-				printf("%s = %s\n", id.c_str(), ex.to_string().c_str());
+				// printf("%s = %s\n", id.c_str(), ex.to_string().c_str());
 				vars[id] = ex;
 			}
 			else if (n.rule == "if") {
@@ -110,19 +109,11 @@ struct Lang2 : Ruleset {
 
 void lang2_test() {
 	Lang2 l2;
-	// l2.tok.loads(
-	// 	"a = 102\n"
-	// 	"b = \"ass\"\n"
-	// 	"print \"hello world\" 10 null true\n"
-	// 	"print a b\n"
-	// );
-	l2.tok.loadf("test.bas");
-	l2.parse();
-	l2.parse_result.show();
+	l2.rules.tok.loadf("test.bas");
+	l2.rules.parse();
+	l2.rules.parse_result.show();
 
 	l2.run();
-
-	// printf("vars %s\n", l2.vars.at("a").to_string().c_str());
 }
 
 
