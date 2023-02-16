@@ -10,7 +10,7 @@ struct Var {
 	int i = 0;
 	string s;
 
-	string to_string() {
+	string to_string() const {
 		switch (type) {
 		case T_NULL:    return "null";
 		case T_NUMBER:  return std::to_string(i);
@@ -43,13 +43,13 @@ struct Lang2 {
 			{ "assign", "varpath !$= !expr !eol" },
 			{ "varpath", "ident" },
 			// expressions
-			{ "expr", "expr_comp" },
-			// { "expr_or", "expr_and $| $| !expr_and | expr_and" },
-			// { "expr_and", "expr_comp $& $& !expr_comp | expr_comp" },
+			{ "expr", "expr_or" },
+			{ "expr_or", "expr_and $| $| !expr_or | expr_and" },
+			{ "expr_and", "expr_comp $& $& !expr_and | expr_comp" },
 			{ "expr_comp", "expr_add expr_comp_op !expr_add | expr_add" },
 			{ "expr_comp_op", "$= $= | $! $= | $> $= | $< $= | $> | $<" },
-			{ "expr_add", "expr_mul $+ !expr_mul | expr_mul $- !expr_mul | expr_mul" },
-			{ "expr_mul", "expr_value $* !expr_value | expr_value $/ !expr_value | expr_value" },
+			{ "expr_add", "expr_mul $+ !expr_add | expr_mul $- !expr_add | expr_mul" },
+			{ "expr_mul", "expr_value $* !expr_mul | expr_value $/ !expr_mul | expr_value" },
 			{ "expr_value", "$null | $true | $false | number | strlit | varpath" },
 		});
 	}
@@ -98,13 +98,16 @@ struct Lang2 {
 				throw runtime_error("bad_statement [" + n.rule + "]");
 	}
 
-	int run_expr_truthy(const Node& n) {
-		auto v = run_expr(n);
+	int expr_truthy(const Var& v) {
 		switch (v.type) {
 		case Var::T_NULL:    return false;
 		case Var::T_NUMBER:  return !!v.i;
 		default:             throw runtime_error("value not truthy [" + v.to_string() + "]");
 		}
+	}
+
+	int run_expr_truthy(const Node& n) {
+		return expr_truthy(run_expr(n));
 	}
 
 	Var run_expr(const Node& n) {
@@ -114,21 +117,30 @@ struct Lang2 {
 		else if (n.rule == "$false")   return { Var::T_NUMBER, 0 };
 		else if (n.rule == "number")   return { Var::T_NUMBER, stoi(n.value) };
 		else if (n.rule == "strlit")   return { Var::T_STRING, 0, stripstrlit(n.value) };
-		else if (n.rule == "varpath")  return vars.count(n.get("ident").value) ? vars[n.get("ident").value] : Var{ Var::T_NULL };
+		else if (n.rule == "varpath")  return run_varpath(n);
 		// compound expressions
 		else if (n.rule == "expr")        return run_expr(n.list.at(0));
 		else if (n.rule == "expr_value")  return run_expr(n.list.at(0));
-		// else if (n.rule == "expr_or") {
-		// 	auto a = run_expr(n.get("expr_and", 0));
-		// 	if (n.count("expr_and") == 1)  return a;
-		// 	auto b = run_expr(n.get("expr_and", 1));
-		// }
+		else if (n.rule == "expr_or") {
+			auto a = run_expr(n.get("expr_and"));
+			if (n.count("expr_or") == 0)  return a;
+			if (expr_truthy(a))  return VAR_TRUE;  // short circuit
+			auto b = run_expr(n.get("expr_or"));
+			return expr_truthy(b) ? VAR_TRUE : VAR_FALSE;
+		}
+		else if (n.rule == "expr_and") {
+			auto a = run_expr(n.get("expr_comp"));
+			if (n.count("expr_and") == 0)  return a;
+			if (!expr_truthy(a))  return VAR_FALSE;  // short circuit
+			auto b = run_expr(n.get("expr_and"));
+			return expr_truthy(b) ? VAR_TRUE : VAR_FALSE;
+		}
 		else if (n.rule == "expr_comp") {
 			auto a = run_expr(n.get("expr_add", 0));
 			if (n.count("expr_add") == 1)  return a;
 			auto b = run_expr(n.get("expr_add", 1));
 			auto oplist = n.get("expr_comp_op").list;
-			auto c = oplist.at(0).value + (oplist.size() > 1 ? oplist.at(1).value : "");
+			auto c = oplist.at(0).value + (oplist.size() > 1 ? oplist.at(1).value : "");  // build comparison operator
 			// printf("comp: [%s]\n", c.c_str());
 			if (a.type == Var::T_NUMBER && b.type == Var::T_NUMBER) {
 				if (c == "==")  return a.i == b.i ? VAR_TRUE : VAR_FALSE;
@@ -140,20 +152,20 @@ struct Lang2 {
 			}
 		}
 		else if (n.rule == "expr_add") {
-			auto a = run_expr(n.get("expr_mul", 0));
-			if (n.count("expr_mul") == 1)  return a;
-			auto b = run_expr(n.get("expr_mul", 1));
-			auto c = n.list.at(1).value;
+			auto a = run_expr(n.get("expr_mul"));
+			if (n.count("expr_add") == 0)  return a;
+			auto b = run_expr(n.get("expr_add"));
+			auto c = n.list.at(1).value;  // add / subtract operator
 			if (a.type == Var::T_NUMBER || b.type == Var::T_NUMBER) {
 				if (c == "+")  return { Var::T_NUMBER, a.i + b.i };
 				if (c == "-")  return { Var::T_NUMBER, a.i - b.i };
 			}
 		}
 		else if (n.rule == "expr_mul") {
-			auto a = run_expr(n.get("expr_value", 0));
-			if (n.count("expr_value") == 1)  return a;
-			auto b = run_expr(n.get("expr_value", 1));
-			auto c = n.list.at(1).value;
+			auto a = run_expr(n.get("expr_value"));
+			if (n.count("expr_mul") == 0)  return a;
+			auto b = run_expr(n.get("expr_mul"));
+			auto c = n.list.at(1).value;  // multiple / divide operator
 			if (a.type == Var::T_NUMBER || b.type == Var::T_NUMBER) {
 				if (c == "*")  return { Var::T_NUMBER, a.i * b.i };
 				if (c == "/")  return { Var::T_NUMBER, a.i / b.i };
@@ -161,6 +173,13 @@ struct Lang2 {
 		}
 		// fail
 		throw runtime_error("bad_expression [" + n.rule + "]");
+	}
+
+	Var run_varpath(const Node& n) {
+		auto& id = n.get("ident").value;
+		if (vars.count(id)) return vars[id];
+		// Var{ Var::T_NULL };
+		throw runtime_error("undefined variable [" + id + "]");
 	}
 
 };
