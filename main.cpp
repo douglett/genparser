@@ -142,7 +142,7 @@ struct Lang2 {
 			auto oplist = n.get("expr_comp_op").list;
 			auto c = oplist.at(0).value + (oplist.size() > 1 ? oplist.at(1).value : "");  // build comparison operator
 			// printf("comp: [%s]\n", c.c_str());
-			if (a.type == Var::T_NUMBER && b.type == Var::T_NUMBER) {
+			if (a.type == Var::T_NUMBER && a.type == b.type) {
 				if (c == "==")  return a.i == b.i ? VAR_TRUE : VAR_FALSE;
 				if (c == "!=")  return a.i != b.i ? VAR_TRUE : VAR_FALSE;
 				if (c == ">=")  return a.i >= b.i ? VAR_TRUE : VAR_FALSE;
@@ -150,15 +150,22 @@ struct Lang2 {
 				if (c == ">" )  return a.i >  b.i ? VAR_TRUE : VAR_FALSE;
 				if (c == "<" )  return a.i <  b.i ? VAR_TRUE : VAR_FALSE;
 			}
+			else if (a.type == Var::T_STRING && a.type == b.type) {
+				if (c == "==")  return a.s == b.s ? VAR_TRUE : VAR_FALSE;
+				if (c == "!=")  return a.s != b.s ? VAR_TRUE : VAR_FALSE;
+			}
 		}
 		else if (n.rule == "expr_add") {
 			auto a = run_expr(n.get("expr_mul"));
 			if (n.count("expr_add") == 0)  return a;
 			auto b = run_expr(n.get("expr_add"));
 			auto c = n.list.at(1).value;  // add / subtract operator
-			if (a.type == Var::T_NUMBER || b.type == Var::T_NUMBER) {
+			if (a.type == Var::T_NUMBER && a.type == b.type) {
 				if (c == "+")  return { Var::T_NUMBER, a.i + b.i };
 				if (c == "-")  return { Var::T_NUMBER, a.i - b.i };
+			}
+			else if (a.type == Var::T_STRING && a.type == b.type) {
+				if (c == "+")  return { Var::T_STRING, 0, a.s + b.s };
 			}
 		}
 		else if (n.rule == "expr_mul") {
@@ -166,7 +173,7 @@ struct Lang2 {
 			if (n.count("expr_mul") == 0)  return a;
 			auto b = run_expr(n.get("expr_mul"));
 			auto c = n.list.at(1).value;  // multiple / divide operator
-			if (a.type == Var::T_NUMBER || b.type == Var::T_NUMBER) {
+			if (a.type == Var::T_NUMBER && a.type == b.type) {
 				if (c == "*")  return { Var::T_NUMBER, a.i * b.i };
 				if (c == "/")  return { Var::T_NUMBER, a.i / b.i };
 			}
