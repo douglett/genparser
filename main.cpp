@@ -33,8 +33,8 @@ struct Lang2 {
 			// statements
 			{ "statement", "assign | print | if | emptyline" },
 			{ "print", "$print *expr !endl" },
-			{ "if", "$if !expr !$then !endl !block ?else !$end !$if !endl" },
-			// { "elseif", "$else $if !expr !endl !block"},
+			{ "if", "$if !expr ?!$then !endl !block *elseif ?else !$end !$if !endl" },
+			{ "elseif", "$else $if !expr ?$then !endl !block"},
 			{ "else", "$else !endl !block"},
 			{ "block", "*statement" },
 			// variables
@@ -75,9 +75,13 @@ struct Lang2 {
 				vars[id] = ex;
 			}
 			else if (n.rule == "if") {
-				if (run_expr_truthy(n.get("expr")))
-					run_block(n.get("block"));
-				else if (n.count("else"))
+				int found = 0;
+				if (run_expr_truthy(n.get("expr")))  // if
+					run_block(n.get("block")), found = 1;
+				for (int i = 0; !found && i < n.count("elseif"); i++)  // else-if
+					if (run_expr_truthy(n.get("elseif", i).get("expr")))
+						run_block(n.get("elseif", i).get("block")), found = 1;
+				if (!found && n.count("else"))  // else
 					run_block(n.get("else").get("block"));
 			}
 			else
