@@ -114,7 +114,7 @@ struct Ruleset {
 		return runrule("prog", parse_result);
 	}
 	int error(const string& name, Node& n) {
-		string error = "rule required: " + name + ", got [" + tok.peek() + "]";
+		string error = "rule required: " + name + ", got [" + tok.peek() + "] - line " + to_string(tok.lno);
 		n.list.push_back({ "ERROR: " + error });
 		throw parse_error(error);
 	}

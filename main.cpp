@@ -19,6 +19,8 @@ struct Var {
 		throw runtime_error("bad_type");
 	}
 };
+const Var VAR_TRUE  = { Var::T_NUMBER, 1 };
+const Var VAR_FALSE = { Var::T_NUMBER, 0 };
 
 
 struct Lang2 {
@@ -33,14 +35,22 @@ struct Lang2 {
 			// statements
 			{ "statement", "assign | print | if | emptyline" },
 			{ "print", "$print *expr !endl" },
-			{ "if", "$if !expr ?!$then !endl !block *elseif ?else !$end !$if !endl" },
+			{ "if", "$if !expr ?$then !endl !block *elseif ?else !$end !$if !endl" },
 			{ "elseif", "$else $if !expr ?$then !endl !block"},
 			{ "else", "$else !endl !block"},
 			{ "block", "*statement" },
 			// variables
 			{ "assign", "varpath !$= !expr !eol" },
 			{ "varpath", "ident" },
-			{ "expr", "$null | $true | $false | number | strlit | varpath" },
+			// expressions
+			{ "expr", "expr_comp" },
+			// { "expr_or", "expr_and $| $| !expr_and | expr_and" },
+			// { "expr_and", "expr_comp $& $& !expr_comp | expr_comp" },
+			{ "expr_comp", "expr_add expr_comp_op !expr_add | expr_add" },
+			{ "expr_comp_op", "$= $= | $! $= | $> $= | $< $= | $> | $<" },
+			{ "expr_add", "expr_mul $+ !expr_mul | expr_mul $- !expr_mul | expr_mul" },
+			{ "expr_mul", "expr_value $* !expr_value | expr_value $/ !expr_value | expr_value" },
+			{ "expr_value", "$null | $true | $false | number | strlit | varpath" },
 		});
 	}
 
@@ -98,14 +108,59 @@ struct Lang2 {
 	}
 
 	Var run_expr(const Node& n) {
-		auto& v = n.list.at(0);
-		if      (v.rule == "$null")    return { Var::T_NULL };
-		else if (v.rule == "$true")    return { Var::T_NUMBER, 1 };
-		else if (v.rule == "$false")   return { Var::T_NUMBER, 0 };
-		else if (v.rule == "number")   return { Var::T_NUMBER, stoi(v.value) };
-		else if (v.rule == "strlit")   return { Var::T_STRING, 0, stripstrlit(v.value) };
-		else if (v.rule == "varpath")  return vars.count(v.get("ident").value) ? vars[v.get("ident").value] : Var{ Var::T_NULL };
-		throw runtime_error("bad_expression [" + v.rule + "]");
+		// basic expressions
+		if      (n.rule == "$null")    return { Var::T_NULL };
+		else if (n.rule == "$true")    return { Var::T_NUMBER, 1 };
+		else if (n.rule == "$false")   return { Var::T_NUMBER, 0 };
+		else if (n.rule == "number")   return { Var::T_NUMBER, stoi(n.value) };
+		else if (n.rule == "strlit")   return { Var::T_STRING, 0, stripstrlit(n.value) };
+		else if (n.rule == "varpath")  return vars.count(n.get("ident").value) ? vars[n.get("ident").value] : Var{ Var::T_NULL };
+		// compound expressions
+		else if (n.rule == "expr")        return run_expr(n.list.at(0));
+		else if (n.rule == "expr_value")  return run_expr(n.list.at(0));
+		// else if (n.rule == "expr_or") {
+		// 	auto a = run_expr(n.get("expr_and", 0));
+		// 	if (n.count("expr_and") == 1)  return a;
+		// 	auto b = run_expr(n.get("expr_and", 1));
+		// }
+		else if (n.rule == "expr_comp") {
+			auto a = run_expr(n.get("expr_add", 0));
+			if (n.count("expr_add") == 1)  return a;
+			auto b = run_expr(n.get("expr_add", 1));
+			auto oplist = n.get("expr_comp_op").list;
+			auto c = oplist.at(0).value + (oplist.size() > 1 ? oplist.at(1).value : "");
+			// printf("comp: [%s]\n", c.c_str());
+			if (a.type == Var::T_NUMBER && b.type == Var::T_NUMBER) {
+				if (c == "==")  return a.i == b.i ? VAR_TRUE : VAR_FALSE;
+				if (c == "!=")  return a.i != b.i ? VAR_TRUE : VAR_FALSE;
+				if (c == ">=")  return a.i >= b.i ? VAR_TRUE : VAR_FALSE;
+				if (c == "<=")  return a.i <= b.i ? VAR_TRUE : VAR_FALSE;
+				if (c == ">" )  return a.i >  b.i ? VAR_TRUE : VAR_FALSE;
+				if (c == "<" )  return a.i <  b.i ? VAR_TRUE : VAR_FALSE;
+			}
+		}
+		else if (n.rule == "expr_add") {
+			auto a = run_expr(n.get("expr_mul", 0));
+			if (n.count("expr_mul") == 1)  return a;
+			auto b = run_expr(n.get("expr_mul", 1));
+			auto c = n.list.at(1).value;
+			if (a.type == Var::T_NUMBER || b.type == Var::T_NUMBER) {
+				if (c == "+")  return { Var::T_NUMBER, a.i + b.i };
+				if (c == "-")  return { Var::T_NUMBER, a.i - b.i };
+			}
+		}
+		else if (n.rule == "expr_mul") {
+			auto a = run_expr(n.get("expr_value", 0));
+			if (n.count("expr_value") == 1)  return a;
+			auto b = run_expr(n.get("expr_value", 1));
+			auto c = n.list.at(1).value;
+			if (a.type == Var::T_NUMBER || b.type == Var::T_NUMBER) {
+				if (c == "*")  return { Var::T_NUMBER, a.i * b.i };
+				if (c == "/")  return { Var::T_NUMBER, a.i / b.i };
+			}
+		}
+		// fail
+		throw runtime_error("bad_expression [" + n.rule + "]");
 	}
 
 };

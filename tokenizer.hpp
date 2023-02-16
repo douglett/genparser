@@ -12,9 +12,10 @@ struct Tokenizer {
 	const string TOK_EOL = "$EOL";
 	vector<string> tokens;
 	int pos = 0;
+	int lno = 1;
 
 	int loadf(const string& fname) {
-		tokens = {}, pos = 0;
+		tokens = {}, pos = 0, lno = 1;
 		fstream fs(fname, ios::in);
 		string s;
 		if (!fs.is_open())
@@ -25,7 +26,7 @@ struct Tokenizer {
 	}
 
 	int loads(const string& prog) {
-		tokens = {}, pos = 0;
+		tokens = {}, pos = 0, lno = 1;
 		stringstream ss(prog);
 		string s;
 		while (getline(ss, s))
@@ -66,6 +67,9 @@ struct Tokenizer {
 	}
 
 	const string& get() {
-		return pos >= tokens.size() ? TOK_EOF : tokens[pos++];
+		// return pos >= tokens.size() ? TOK_EOF : tokens[pos++];
+		if (pos > tokens.size()) return TOK_EOF;
+		if (tokens[pos] == TOK_EOL) lno++;
+		return tokens[pos++];
 	}
 };
